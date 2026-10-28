@@ -28,7 +28,19 @@ The protocol and the TOML format are in [repoke's docs/plugins.md](https://githu
 - never prompts, and keeps `describe` instant;
 - passes `scripts/check.sh` and has been run against the real tool, noted in the table above.
 
-Every file is pinned in `index.toml` by its sha256 once it has been reviewed, and `repoke plugin install` refuses a file that doesn't match. After reviewing a change, `scripts/check.sh --pin` writes the new sums.
+Every file is pinned in `index.toml` by its sha256 once it has been reviewed, and `repoke plugin install` refuses a file that doesn't match.
+
+## Community plugins
+
+Anyone can share a plugin: open a pull request that adds it as `community/<id>/repoke-<id>` (or `<id>.toml`) with its entry in `index.toml`, using `tier = "community"`, your GitHub login as `author` and no `sha256`, and say which machine and tool versions you tried it on. `repoke plugin search` lists community plugins after the official ones, sorted by votes, with their downloads.
+
+To vote for a plugin, upvote its Discussion; comments there are the reviews.
+
+## Maintaining the index
+
+- `scripts/check.sh` checks every entry; it fails when a file changed since it was pinned.
+- `scripts/publish.py <id>…`, once a change has been reviewed, pins its sha256, uploads that version to the `files` release (where GitHub counts the downloads) and points `url` at it. `--discussion` also opens the plugin's Discussion in the `Plugins` category.
+- `scripts/stats.py` writes each plugin's downloads and votes into `index.toml`.
 
 Planned: tpm (tmux), zinit and antidote (zsh), lazy.nvim and vim-plug, gcloud components. Pull requests are welcome once each has been tried on a machine that has the tool.
 
