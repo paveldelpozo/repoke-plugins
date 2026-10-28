@@ -28,6 +28,8 @@ The protocol and the TOML format are in [repoke's docs/plugins.md](https://githu
 - never prompts, and keeps `describe` instant;
 - passes `scripts/check.sh` and has been run against the real tool, noted in the table above.
 
+Every file is pinned in `index.toml` by its sha256 once it has been reviewed, and `repoke plugin install` refuses a file that doesn't match. After reviewing a change, `scripts/check.sh --pin` writes the new sums.
+
 Planned: tpm (tmux), zinit and antidote (zsh), lazy.nvim and vim-plug, gcloud components. Pull requests are welcome once each has been tried on a machine that has the tool.
 
 ## License
