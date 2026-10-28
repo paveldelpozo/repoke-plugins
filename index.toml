@@ -1,0 +1,21 @@
+# Official repoke plugins. `repoke plugin search` reads this file and `repoke plugin install <id>`
+# downloads `file`, shows it and copies it into place.
+format = 1
+
+[[plugin]]
+id = "omz"
+name = "oh-my-zsh"
+kind = "executable"
+file = "plugins/omz/repoke-omz"
+os = ["macos", "linux"]
+requires = ["git", "zsh"]
+description = "Updates the oh-my-zsh clone when its branch is behind the remote"
+
+[[plugin]]
+id = "vscode"
+name = "VS Code extensions"
+kind = "executable"
+file = "plugins/vscode/repoke-vscode"
+os = ["macos", "linux"]
+requires = ["code", "python3"]
+description = "Extensions with a newer stable release on the Visual Studio Marketplace; also export and init"

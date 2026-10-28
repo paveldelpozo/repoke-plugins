@@ -1,0 +1,145 @@
+#!/usr/bin/env python3
+"""repoke plugin for VS Code extensions, protocol 1.
+
+Protocol: https://github.com/paveldelpozo/repoke/blob/main/docs/plugins.md
+Installed extensions come from `code --list-extensions --show-versions`. `code` has no command
+that says which are outdated, so the latest stable version of each is asked to the Visual Studio
+Marketplace.
+"""
+
+import json
+import platform
+import shutil
+import subprocess
+import sys
+import urllib.request
+
+API = "https://marketplace.visualstudio.com/_apis/public/gallery/extensionquery"
+PRE_RELEASE = "Microsoft.VisualStudio.Code.PreRelease"
+# Marketplace query flags: versions (0x1), version properties (0x10), latest version only (0x200).
+LATEST_ONLY = 0x200 | 0x10
+ALL_VERSIONS = 0x1 | 0x10
+BATCH = 100
+
+CODE = shutil.which("code")
+
+
+def target():
+    os_name = {"darwin": "darwin", "win32": "win32"}.get(sys.platform, "linux")
+    arch = "arm64" if platform.machine().lower() in ("arm64", "aarch64") else "x64"
+    return f"{os_name}-{arch}"
+
+
+def installed():
+    out = subprocess.run(
+        [CODE, "--list-extensions", "--show-versions"], capture_output=True, text=True, check=True
+    ).stdout
+    return dict(line.rsplit("@", 1) for line in out.split() if "@" in line)
+
+
+def query(ids, flags):
+    versions = {}
+    for start in range(0, len(ids), BATCH):
+        batch = ids[start : start + BATCH]
+        body = {
+            "filters": [
+                {"criteria": [{"filterType": 7, "value": i} for i in batch], "pageSize": len(batch)}
+            ],
+            "flags": flags,
+        }
+        request = urllib.request.Request(
+            API,
+            data=json.dumps(body).encode(),
+            headers={
+                "Content-Type": "application/json",
+                "Accept": "application/json;api-version=3.0-preview.1",
+            },
+        )
+        with urllib.request.urlopen(request, timeout=60) as response:
+            results = json.load(response)["results"][0]["extensions"]
+        for ext in results:
+            key = f"{ext['publisher']['publisherName']}.{ext['extensionName']}".lower()
+            versions[key] = ext.get("versions", [])
+    return versions
+
+
+def pre_release(version):
+    return any(
+        p.get("key") == PRE_RELEASE and p.get("value") == "true"
+        for p in version.get("properties", [])
+    )
+
+
+def latest_stable(versions):
+    here = target()
+    for v in versions:
+        if not pre_release(v) and v.get("targetPlatform") in (None, "", "universal", here):
+            return v["version"]
+    return None
+
+
+def parts(version):
+    return tuple(int(p) if p.isdigit() else 0 for p in version.replace("-", ".").split("."))
+
+
+def outdated():
+    have = installed()
+    ids = list(have)
+    found = query(ids, LATEST_ONLY)
+    # The latest version may be a pre-release; only those extensions need their full history.
+    again = [i for i, vs in found.items() if vs and (pre_release(vs[0]) or latest_stable(vs) is None)]
+    if again:
+        found.update(query(again, ALL_VERSIONS))
+    rows = []
+    for name, current in have.items():
+        latest = latest_stable(found.get(name.lower(), []))
+        if latest and parts(latest) > parts(current):
+            rows.append({"name": name, "current": current, "latest": latest})
+    return rows
+
+
+def run_code(names, extra):
+    failed = []
+    for name in names:
+        print(f"installing {name}", flush=True)
+        if subprocess.run([CODE, "--install-extension", name, *extra]).returncode != 0:
+            failed.append(name)
+    if failed:
+        print(f"failed: {' '.join(failed)}", file=sys.stderr)
+        sys.exit(1)
+
+
+def main():
+    command = sys.argv[1] if len(sys.argv) > 1 else ""
+    if command == "describe":
+        print(json.dumps({
+            "protocol": 1,
+            "id": "vscode",
+            "name": "VS Code extensions",
+            "capabilities": ["installed", "install"],
+        }))
+    elif command == "detect":
+        if CODE:
+            version = subprocess.run([CODE, "--version"], capture_output=True, text=True).stdout
+            print(json.dumps({"installed": True, "version": version.split("\n")[0]}))
+        else:
+            print(json.dumps({"installed": False}))
+    elif command == "outdated":
+        print(json.dumps(outdated()))
+    elif command == "upgrade":
+        run_code(sys.argv[2:], ["--force"])
+    elif command == "installed":
+        print(json.dumps([{"name": n, "version": v} for n, v in installed().items()]))
+    elif command == "install":
+        run_code(sys.argv[2:], [])
+    else:
+        print("usage: repoke-vscode describe|detect|outdated|upgrade|installed|install", file=sys.stderr)
+        sys.exit(2)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (OSError, subprocess.CalledProcessError, ValueError, KeyError) as error:
+        print(f"repoke-vscode: {error}", file=sys.stderr)
+        sys.exit(1)
