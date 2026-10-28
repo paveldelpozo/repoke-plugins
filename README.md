@@ -41,6 +41,7 @@ To vote for a plugin, upvote its Discussion; comments there are the reviews.
 - `scripts/check.sh` checks every entry; it fails when a file changed since it was pinned.
 - `scripts/publish.py <id>…`, once a change has been reviewed, pins its sha256, uploads that version to the `files` release (where GitHub counts the downloads) and points `url` at it. `--discussion` also opens the plugin's Discussion in the `Plugins` category.
 - `scripts/stats.py` writes each plugin's downloads and votes into `index.toml`.
+- `scripts/update-stats.sh` runs `stats.py` and pushes the new numbers; a daily launchd agent on the maintainer's Mac runs it.
 
 Planned: tpm (tmux), zinit and antidote (zsh), lazy.nvim and vim-plug, gcloud components. Pull requests are welcome once each has been tried on a machine that has the tool.
 
