@@ -13,7 +13,7 @@ description = "Updates the oh-my-zsh clone when its branch is behind the remote"
 sha256 = "dacd98e91ba739a99ca5c87a09511dcefe08a42e5c17eb9d880b184c94d6bb3c"
 url = "https://github.com/paveldelpozo/repoke-plugins/releases/download/files/repoke-omz-dacd98e91ba7"
 discussion = "https://github.com/paveldelpozo/repoke-plugins/discussions/1"
-downloads = 0
+downloads = 1
 votes = 1
 
 [[plugin]]
@@ -27,5 +27,5 @@ description = "Extensions with a newer stable release on the Visual Studio Marke
 sha256 = "d25507488b88df77ee4a629b9c44e5de26f2f530d03d508bb9fed8952bd25dbc"
 url = "https://github.com/paveldelpozo/repoke-plugins/releases/download/files/repoke-vscode-d25507488b88"
 discussion = "https://github.com/paveldelpozo/repoke-plugins/discussions/2"
-downloads = 0
+downloads = 1
 votes = 1
