@@ -1,0 +1,75 @@
+#!/bin/sh
+# repoke plugin for antidote, protocol 1: https://github.com/paveldelpozo/repoke/blob/main/docs/plugins.md
+# Put it on your PATH (e.g. ~/.local/bin/repoke-antidote). Bundles come from `antidote update
+# --dry-run` (antidote 2.0 or later), so pins and min-age zstyles are respected. antidote itself
+# is checked only when it is a git clone; otherwise its package manager updates it.
+set -eu
+export GIT_TERMINAL_PROMPT=0
+
+src=
+for f in "${ZDOTDIR:-$HOME}/.antidote/antidote.zsh" \
+  /opt/homebrew/opt/antidote/share/antidote/antidote.zsh \
+  /usr/local/opt/antidote/share/antidote/antidote.zsh \
+  /home/linuxbrew/.linuxbrew/opt/antidote/share/antidote/antidote.zsh \
+  /usr/share/zsh-antidote/antidote.zsh; do
+  if [ -f "$f" ]; then src=$f; break; fi
+done
+self=${src%/*}
+
+# antidote is a zsh function. .zshrc is not loaded, since it may be slow or prompt, but .zstyles
+# is: it is where antidote's docs put the zstyles that change its home and how bundles update.
+antidote() {
+  zsh -f -c '
+    source "$1" || exit 1
+    [[ -r ${ZDOTDIR:-$HOME}/.zstyles ]] && source "${ZDOTDIR:-$HOME}/.zstyles"
+    shift
+    antidote "$@"' repoke-antidote "$src" "$@"
+}
+
+case "${1:-}" in
+  describe)
+    echo '{"protocol":1,"id":"antidote","name":"zsh plugins (antidote)","os":["macos","linux"],"capabilities":[]}'
+    ;;
+  detect)
+    if [ -n "$src" ] && command -v zsh >/dev/null && command -v git >/dev/null; then
+      printf '{"installed":true,"version":"%s"}\n' "$(antidote --version | awk '{print $3}')"
+    else
+      echo '{"installed":false}'
+    fi
+    ;;
+  outdated)
+    case $(antidote --version | awk '{print $3}') in
+      0.* | 1.*) echo "repoke-antidote: needs antidote 2.0 or later, for update --dry-run" >&2; exit 1 ;;
+    esac
+    if ! out=$(antidote update --bundles --dry-run 2>&1); then
+      echo "$out" >&2
+      exit 1
+    fi
+    esc=$(printf '\033')
+    items=$(echo "$out" | sed "s/$esc\[[0-9;]*m//g" |
+      sed -n 's/.*update available: \([^ ]*\) \([0-9a-f]*\) -> \([0-9a-f]*\).*/{"name":"\1","current":"\2","latest":"\3"}/p' |
+      paste -sd, -)
+    if [ -e "$self/.git" ] && git -C "$self" rev-parse '@{u}' >/dev/null 2>&1; then
+      git -C "$self" fetch --quiet
+      if ! git -C "$self" merge-base --is-ancestor '@{u}' HEAD; then
+        items="${items:+$items,}$(printf '{"name":"antidote","current":"%s","latest":"%s"}' \
+          "$(git -C "$self" rev-parse --short HEAD)" "$(git -C "$self" rev-parse --short '@{u}')")"
+      fi
+    fi
+    echo "[$items]"
+    ;;
+  upgrade)
+    shift
+    bundles=; me=
+    for p in "$@"; do
+      if [ "$p" = antidote ]; then me=1; else bundles=1; fi
+    done
+    # antidote update cannot pick bundles, so this updates all of them, as it would in the shell.
+    if [ -n "$bundles" ]; then antidote update --bundles; fi
+    if [ -n "$me" ]; then antidote update --self; fi
+    ;;
+  *)
+    echo "usage: $0 describe|detect|outdated|upgrade" >&2
+    exit 2
+    ;;
+esac

@@ -1,0 +1,71 @@
+#!/bin/sh
+# repoke plugin for tpm (tmux plugin manager), protocol 1: https://github.com/paveldelpozo/repoke/blob/main/docs/plugins.md
+# Put it on your PATH (e.g. ~/.local/bin/repoke-tpm). tpm and its plugins are git clones, so
+# "outdated" means a clone's branch is behind the remote one; the version shown is the commit.
+set -eu
+export GIT_TERMINAL_PROMPT=0
+IFS='
+'
+
+# tmux exports TMUX_PLUGIN_MANAGER_PATH to the shells in its panes; elsewhere, tpm's own default.
+dir=${TMUX_PLUGIN_MANAGER_PATH:-}
+if [ -z "$dir" ]; then
+  xdg=${XDG_CONFIG_HOME:-$HOME/.config}/tmux
+  if [ -f "$xdg/tmux.conf" ]; then dir=$xdg/plugins; else dir=$HOME/.tmux/plugins; fi
+fi
+dir=${dir%/}
+
+# Clones on a branch; one checked out at a pinned commit or tag has no upstream and is left alone.
+clones() {
+  for d in "$dir"/*/; do
+    d=${d%/}
+    if [ -e "$d/.git" ] && git -C "$d" rev-parse '@{u}' >/dev/null 2>&1; then echo "$d"; fi
+  done
+}
+
+case "${1:-}" in
+  describe)
+    echo '{"protocol":1,"id":"tpm","name":"tmux plugins (tpm)","os":["macos","linux"],"capabilities":[]}'
+    ;;
+  detect)
+    if command -v tmux >/dev/null && command -v git >/dev/null && [ -x "$dir/tpm/tpm" ]; then
+      printf '{"installed":true,"version":"%s"}\n' "$(git -C "$dir/tpm" rev-parse --short HEAD)"
+    else
+      echo '{"installed":false}'
+    fi
+    ;;
+  outdated)
+    list=$(clones)
+    for d in $list; do
+      (git -C "$d" fetch --quiet 2>/dev/null || echo "repoke-tpm: could not fetch ${d##*/}" >&2) &
+    done
+    wait
+    sep=
+    printf '['
+    for d in $list; do
+      git -C "$d" merge-base --is-ancestor '@{u}' HEAD && continue
+      printf '%s{"name":"%s","current":"%s","latest":"%s"}' "$sep" "${d##*/}" \
+        "$(git -C "$d" rev-parse --short HEAD)" "$(git -C "$d" rev-parse --short '@{u}')"
+      sep=,
+    done
+    echo ']'
+    ;;
+  upgrade)
+    shift
+    # What prefix + U runs; it reads the plugin list from tmux.conf and needs no tmux session.
+    "$dir/tpm/bin/update_plugins" "$@"
+    # update_plugins pulls in background jobs and loses their failures, so check each clone here.
+    fail=0
+    for p in "$@"; do
+      if ! git -C "$dir/$p" merge-base --is-ancestor '@{u}' HEAD; then
+        echo "repoke-tpm: $p was not updated" >&2
+        fail=1
+      fi
+    done
+    exit $fail
+    ;;
+  *)
+    echo "usage: $0 describe|detect|outdated|upgrade" >&2
+    exit 2
+    ;;
+esac

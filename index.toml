@@ -29,3 +29,75 @@ url = "https://github.com/paveldelpozo/repoke-plugins/releases/download/files/re
 discussion = "https://github.com/paveldelpozo/repoke-plugins/discussions/2"
 downloads = 1
 votes = 1
+
+[[plugin]]
+id = "git"
+name = "Git config"
+kind = "executable"
+file = "plugins/git/repoke-git"
+os = ["macos", "linux"]
+requires = ["git"]
+description = "Carries .gitconfig and ~/.config/git in repoke export, to restore with init (repoke 0.7 or later)"
+
+[[plugin]]
+id = "zsh"
+name = "zsh config"
+kind = "executable"
+file = "plugins/zsh/repoke-zsh"
+os = ["macos", "linux"]
+requires = ["zsh"]
+description = "Carries .zshrc and the other zsh startup files in repoke export, to restore with init (repoke 0.7 or later)"
+
+[[plugin]]
+id = "zinit"
+name = "zsh plugins (zinit)"
+kind = "executable"
+file = "plugins/zinit/repoke-zinit"
+os = ["macos", "linux"]
+requires = ["git", "zsh"]
+description = "Updates zinit and the zsh plugins it cloned when their branch is behind the remote"
+
+[[plugin]]
+id = "antidote"
+name = "zsh plugins (antidote)"
+kind = "executable"
+file = "plugins/antidote/repoke-antidote"
+os = ["macos", "linux"]
+requires = ["git", "zsh"]
+description = "Bundles with new commits, as antidote update --dry-run reports them, and antidote itself when it is a git clone"
+
+[[plugin]]
+id = "tpm"
+name = "tmux plugins (tpm)"
+kind = "executable"
+file = "plugins/tpm/repoke-tpm"
+os = ["macos", "linux"]
+requires = ["git", "tmux"]
+description = "Updates tpm and the tmux plugins it cloned when their branch is behind the remote"
+
+[[plugin]]
+id = "lazy"
+name = "lazy.nvim"
+kind = "executable"
+file = "plugins/lazy/repoke-lazy"
+os = ["macos", "linux"]
+requires = ["nvim", "git"]
+description = "Neovim plugins managed by lazy.nvim that :Lazy update would move to a newer commit or release"
+
+[[plugin]]
+id = "vimplug"
+name = "vim-plug"
+kind = "executable"
+file = "plugins/vimplug/repoke-vimplug"
+os = ["macos", "linux"]
+requires = ["git"]
+description = "Vim or Neovim plugins in your Plug list whose branch is behind the remote or whose wildcard tag has a newer match"
+
+[[plugin]]
+id = "gcloud"
+name = "gcloud components"
+kind = "executable"
+file = "plugins/gcloud/repoke-gcloud"
+os = ["macos", "linux"]
+requires = ["gcloud"]
+description = "Google Cloud SDK components with an update available; also export and init"

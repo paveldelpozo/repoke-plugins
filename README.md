@@ -6,6 +6,14 @@ Official plugins for [repoke](https://github.com/paveldelpozo/repoke): tools tha
 |----|-----------------|-------|-----------|
 | `omz` | oh-my-zsh, when its branch is behind the remote | git, zsh | macOS |
 | `vscode` | VS Code extensions with a newer stable release; also `export` and `init` | code, python3 | macOS |
+| `git` | Nothing to update: carries `.gitconfig` and `~/.config/git` in `export` (repoke 0.7+) | git | macOS, Debian |
+| `zsh` | Nothing to update: carries `.zshrc` and the other startup files in `export` (repoke 0.7+) | zsh | macOS, Debian |
+| `zinit` | zinit and the zsh plugins it cloned | git, zsh | Ubuntu 24.04 |
+| `antidote` | antidote bundles with new commits, and antidote when it is a clone | git, zsh | Ubuntu 24.04 |
+| `tpm` | tpm and the tmux plugins it cloned | git, tmux | Ubuntu 24.04 |
+| `lazy` | Neovim plugins that `:Lazy update` would move | nvim, git | Ubuntu 24.04 |
+| `vimplug` | vim-plug plugins behind their remote or wildcard tag | git, vim or nvim | Ubuntu 24.04 |
+| `gcloud` | gcloud components; also `export` and `init`. SDKs from apt, dnf or snap are left to them | gcloud | Ubuntu 24.04 |
 
 ## Install
 
@@ -42,8 +50,6 @@ To vote for a plugin, upvote its Discussion; comments there are the reviews.
 - `scripts/publish.py <id>…`, once a change has been reviewed, pins its sha256, uploads that version to the `files` release (where GitHub counts the downloads) and points `url` at it. `--discussion` also opens the plugin's Discussion in the `Plugins` category.
 - `scripts/stats.py` writes each plugin's downloads and votes into `index.toml`.
 - `scripts/update-stats.sh` runs `stats.py` and pushes the new numbers; a daily launchd agent on the maintainer's Mac runs it.
-
-Planned: tpm (tmux), zinit and antidote (zsh), lazy.nvim and vim-plug, gcloud components. Pull requests are welcome once each has been tried on a machine that has the tool.
 
 ## License
 

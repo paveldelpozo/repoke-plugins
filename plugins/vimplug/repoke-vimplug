@@ -1,0 +1,106 @@
+#!/bin/sh
+# repoke plugin for vim-plug, protocol 1: https://github.com/paveldelpozo/repoke/blob/main/docs/plugins.md
+# Put it on your PATH (e.g. ~/.local/bin/repoke-vimplug). Packages are the plugins in your Plug list;
+# one is outdated when its branch is behind the remote, or a newer tag matches its wildcard `tag`.
+# Plugins pinned to a commit, an exact tag or `frozen` are skipped, as PlugUpdate leaves them alone.
+# It uses Neovim when plug.vim is in its autoload folder, otherwise Vim.
+set -eu
+# A private repo would otherwise ask for a password on the terminal.
+export GIT_TERMINAL_PROMPT=0
+app=${NVIM_APPNAME:-nvim}
+if command -v nvim >/dev/null 2>&1 && { [ -f "${XDG_DATA_HOME:-$HOME/.local/share}/$app/site/autoload/plug.vim" ] ||
+  [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/$app/autoload/plug.vim" ]; }; then
+  editor=nvim
+elif command -v vim >/dev/null 2>&1 && [ -f "$HOME/.vim/autoload/plug.vim" ]; then
+  editor=vim
+else
+  editor=
+fi
+vimrc=$HOME/.vimrc
+[ -f "$vimrc" ] || vimrc=$HOME/.vim/vimrc
+
+# Vim's silent Ex mode skips the vimrc unless it is given with -u.
+run() {
+  if [ "$editor" = nvim ]; then
+    nvim --headless "$@" +qa
+  else
+    vim -Es -i NONE -N -u "$vimrc" "$@" +qa
+  fi
+}
+
+short() { git -C "$1" rev-parse --short "$2"; }
+
+case "${1:-}" in
+  describe)
+    echo '{"protocol":1,"id":"vimplug","name":"vim-plug","os":["macos","linux"],"capabilities":[]}'
+    ;;
+  detect)
+    # vim-plug has no version of its own; the editor it runs in is more useful to see.
+    if [ -n "$editor" ] && command -v git >/dev/null 2>&1; then
+      printf '{"installed":true,"version":"%s"}\n' "$editor"
+    else
+      echo '{"installed":false}'
+    fi
+    ;;
+  outdated)
+    tmp=$(mktemp -d)
+    trap 'rm -rf "$tmp"' EXIT
+    cat >"$tmp/list.vim" <<'EOF'
+call writefile(map(filter(keys(g:plugs), 'has_key(g:plugs[v:val], "uri")'), 'join([v:val, g:plugs[v:val].dir,
+      \ get(g:plugs[v:val], "branch", ""), get(g:plugs[v:val], "tag", ""),
+      \ g:plugs[v:val].frozen || has_key(g:plugs[v:val], "commit")], "\x1f")'), $REPOKE_VIMPLUG_OUT)
+EOF
+    REPOKE_VIMPLUG_OUT=$tmp/plugs run "+source $tmp/list.vim" >&2
+    # A tab would be IFS whitespace, and read would merge the empty fields.
+    us=$(printf '\037')
+
+    while IFS=$us read -r name dir branch tag pinned; do
+      if [ "$pinned" != 0 ] || [ ! -d "$dir/.git" ]; then continue; fi
+      case $tag in
+        *'*'*) set -- --tags origin ;;
+        '') set -- origin "${branch:-HEAD}" ;;
+        *) continue ;;
+      esac
+      (git -C "$dir" fetch --quiet "$@" || echo "$name" >>"$tmp/failed") &
+    done <"$tmp/plugs"
+    wait
+    if [ -f "$tmp/failed" ]; then
+      echo "git fetch failed for: $(tr '\n' ' ' <"$tmp/failed")" >&2
+      exit 1
+    fi
+
+    sep=
+    printf '['
+    while IFS=$us read -r name dir branch tag pinned; do
+      if [ "$pinned" != 0 ] || [ ! -d "$dir/.git" ]; then continue; fi
+      case $tag in
+        *'*'*)
+          latest=$(git -C "$dir" tag --list "$tag" --sort=-version:refname | head -n 1)
+          if [ -z "$latest" ] || [ "$(git -C "$dir" rev-parse HEAD)" = "$(git -C "$dir" rev-parse "$latest^{commit}")" ]; then
+            continue
+          fi
+          current=$(git -C "$dir" describe --tags --exact-match 2>/dev/null || short "$dir" HEAD)
+          ;;
+        '')
+          ! git -C "$dir" merge-base --is-ancestor FETCH_HEAD HEAD || continue
+          current=$(short "$dir" HEAD)
+          latest=$(short "$dir" FETCH_HEAD)
+          ;;
+        *) continue ;;
+      esac
+      printf '%s{"name":"%s","current":"%s","latest":"%s"}' "$sep" "$name" "$current" "$latest"
+      sep=,
+    done <"$tmp/plugs"
+    echo ']'
+    ;;
+  upgrade)
+    shift
+    # PlugUpdate reports failures only in its buffer, as lines starting with "x ".
+    run "+PlugUpdate --sync $*" '+call writefile(getline(1, "$"), "/dev/stdout")' \
+      '+if search("^x ", "nw") | cquit 1 | endif'
+    ;;
+  *)
+    echo "usage: $0 describe|detect|outdated|upgrade" >&2
+    exit 2
+    ;;
+esac

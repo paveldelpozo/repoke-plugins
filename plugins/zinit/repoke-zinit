@@ -1,0 +1,97 @@
+#!/bin/sh
+# repoke plugin for zinit, protocol 1: https://github.com/paveldelpozo/repoke/blob/main/docs/plugins.md
+# Put it on your PATH (e.g. ~/.local/bin/repoke-zinit). zinit and the plugins it cloned are git
+# repositories, so "outdated" means a clone's branch is behind the remote one; the version shown
+# is the commit. Snippets and from"gh-r" plugins are not git clones and are not checked.
+set -eu
+export GIT_TERMINAL_PROMPT=0
+IFS='
+'
+
+# The same search zinit.zsh does when ZINIT[HOME_DIR] is not set.
+data=${XDG_DATA_HOME:-$HOME/.local/share}
+home=$data/zinit
+for h in "$data/zinit" "$HOME/.zinit" "${ZDOTDIR:-$HOME}/.zinit" "$HOME/.zplugin" "${ZDOTDIR:-$HOME}/.zplugin"; do
+  if [ -d "$h" ]; then home=$h; break; fi
+done
+# ZINIT_HOME is the variable zinit's install snippet uses for its own clone.
+bin=${ZINIT_HOME:-}
+for b in "$home/zinit.git" "$home/bin"; do
+  if [ -z "$bin" ] && [ -f "$b/zinit.zsh" ]; then bin=$b; fi
+done
+
+# "name dir" for zinit and each plugin cloned on a branch; a ver'' pin to a tag has no upstream.
+clones() {
+  for d in "$bin" "$home"/plugins/*/; do
+    d=${d%/}
+    n=${d##*/}
+    case $n in
+      _local---*) continue ;;
+      "${bin##*/}") n=zinit ;;
+    esac
+    if [ -e "$d/.git" ] && git -C "$d" rev-parse '@{u}' >/dev/null 2>&1; then
+      echo "$(echo "$n" | sed 's|---|/|') $d"
+    fi
+  done
+}
+
+case "${1:-}" in
+  describe)
+    echo '{"protocol":1,"id":"zinit","name":"zsh plugins (zinit)","os":["macos","linux"],"capabilities":[]}'
+    ;;
+  detect)
+    if command -v zsh >/dev/null && command -v git >/dev/null && [ -n "$bin" ] && [ -f "$bin/zinit.zsh" ]; then
+      printf '{"installed":true,"version":"%s"}\n' "$(git -C "$bin" rev-parse --short HEAD)"
+    else
+      echo '{"installed":false}'
+    fi
+    ;;
+  outdated)
+    list=$(clones)
+    for line in $list; do
+      d=${line#* }
+      (git -C "$d" fetch --quiet 2>/dev/null || echo "repoke-zinit: could not fetch ${line%% *}" >&2) &
+    done
+    wait
+    sep=
+    printf '['
+    for line in $list; do
+      d=${line#* }
+      git -C "$d" merge-base --is-ancestor '@{u}' HEAD && continue
+      printf '%s{"name":"%s","current":"%s","latest":"%s"}' "$sep" "${line%% *}" \
+        "$(git -C "$d" rev-parse --short HEAD)" "$(git -C "$d" rev-parse --short '@{u}')"
+      sep=,
+    done
+    echo ']'
+    ;;
+  upgrade)
+    shift
+    # zinit only exists inside zsh. Loading it alone, without .zshrc, is enough: each plugin keeps
+    # its ices in its own directory, so `zinit update` still runs their atpull'' hooks.
+    # Its output goes through a file: zinit leaves a `sleep 20` behind that holds stdout open, and
+    # on a pipe repoke would wait for it.
+    log=$(mktemp)
+    zsh -f -c '
+      source "$1/zinit.zsh" || exit 1
+      shift
+      for p in "$@"; do
+        if [[ $p == zinit ]]; then zinit self-update -q; else zinit update -q "$p"; fi
+      done' repoke-zinit "$bin" "$@" >"$log" 2>&1 || :
+    cat "$log"
+    rm -f "$log"
+    # zinit update exits 0 even when the fetch fails, so check that each clone caught up.
+    fail=0
+    for p in "$@"; do
+      if [ "$p" = zinit ]; then d=$bin; else d=$home/plugins/$(echo "$p" | sed 's|/|---|'); fi
+      if ! git -C "$d" merge-base --is-ancestor '@{u}' HEAD; then
+        echo "repoke-zinit: $p was not updated" >&2
+        fail=1
+      fi
+    done
+    exit $fail
+    ;;
+  *)
+    echo "usage: $0 describe|detect|outdated|upgrade" >&2
+    exit 2
+    ;;
+esac

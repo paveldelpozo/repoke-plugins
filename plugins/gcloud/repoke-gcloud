@@ -1,0 +1,64 @@
+#!/bin/sh
+# repoke plugin for Google Cloud SDK components, protocol 1: https://github.com/paveldelpozo/repoke/blob/main/docs/plugins.md
+# Put it on your PATH (e.g. ~/.local/bin/repoke-gcloud). Packages are the installed components.
+# SDKs installed by apt, dnf or snap have the component manager disabled and are updated by that
+# package manager, so the plugin reports them as not installed.
+set -eu
+
+root() {
+  bin=$(command -v gcloud) || return 1
+  dir=$(dirname "$(dirname "$(readlink -f "$bin")")")
+  # A snap's gcloud links to the snap binary, so only gcloud itself knows where its SDK is.
+  [ -f "$dir/lib/googlecloudsdk/core/config.json" ] || dir=$(gcloud info --format='value(installation.sdk_root)')
+  echo "$dir"
+}
+
+# config.json is flat, one "key": value per line.
+setting() {
+  sed -n "s/^ *\"$1\": *\"\{0,1\}\([^\",]*\).*/\1/p" "$(root)/lib/googlecloudsdk/core/config.json"
+}
+
+# Component ids and versions never hold commas or quotes.
+to_json() {
+  awk -F, -v keys="$*" 'BEGIN { n = split(keys, k, " "); printf "[" }
+    NF { printf "%s{", (c++ ? "," : ""); for (i = 1; i <= n; i++) printf "%s\"%s\":\"%s\"", (i > 1 ? "," : ""), k[i], $i; printf "}" }
+    END { print "]" }'
+}
+
+case "${1:-}" in
+  describe)
+    echo '{"protocol":1,"id":"gcloud","name":"gcloud components","os":["macos","linux"],"capabilities":["installed","install"]}'
+    ;;
+  detect)
+    if ! root >/dev/null 2>&1; then
+      echo '{"installed":false}'
+    elif [ "$(setting disable_updater)" = true ]; then
+      echo "the component manager is disabled in $(root); the package manager that installed gcloud updates it" >&2
+      echo '{"installed":false}'
+    else
+      printf '{"installed":true,"version":"%s"}\n' "$(setting version)"
+    fi
+    ;;
+  outdated)
+    # Captured first so that a failing gcloud fails the check instead of reading as up to date.
+    list=$(gcloud components list --quiet --filter='state.name="Update Available"' \
+      --format='csv[no-heading](id,current_version_string,latest_version_string)')
+    printf '%s\n' "$list" | to_json name current latest
+    ;;
+  upgrade)
+    # Components ship as one SDK release, and `components update` takes no ids: it updates them all.
+    gcloud components update --quiet
+    ;;
+  installed)
+    list=$(gcloud components list --quiet --only-local-state --format='csv[no-heading](id,current_version_string)')
+    printf '%s\n' "$list" | to_json name version
+    ;;
+  install)
+    shift
+    gcloud components install --quiet "$@"
+    ;;
+  *)
+    echo "usage: $0 describe|detect|outdated|upgrade|installed|install" >&2
+    exit 2
+    ;;
+esac

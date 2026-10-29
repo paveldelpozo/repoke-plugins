@@ -1,0 +1,27 @@
+#!/bin/sh
+# repoke plugin for Git's config, protocol 1: https://github.com/paveldelpozo/repoke/blob/main/docs/plugins.md
+# Git itself is updated by the package manager that installed it; this only lets `repoke export`
+# carry its config files to another machine (repoke 0.7 or later).
+set -eu
+
+case "${1:-}" in
+  describe)
+    echo '{"protocol":1,"id":"git","name":"Git config","config":[".gitconfig",".config/git/config",".config/git/ignore",".config/git/attributes"]}'
+    ;;
+  detect)
+    if command -v git >/dev/null 2>&1; then
+      printf '{"installed":true,"version":"%s"}\n' "$(git --version | awk '{print $3}')"
+    else
+      echo '{"installed":false}'
+    fi
+    ;;
+  outdated)
+    echo '[]'
+    ;;
+  upgrade)
+    ;;
+  *)
+    echo "usage: $0 describe|detect|outdated|upgrade" >&2
+    exit 2
+    ;;
+esac

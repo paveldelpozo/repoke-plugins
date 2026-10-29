@@ -1,0 +1,51 @@
+#!/bin/sh
+# repoke plugin for lazy.nvim, protocol 1: https://github.com/paveldelpozo/repoke/blob/main/docs/plugins.md
+# Put it on your PATH (e.g. ~/.local/bin/repoke-lazy). Packages are the Neovim plugins lazy.nvim manages.
+# "Outdated" is what `:Lazy update` would change, not drift from lazy-lock.json: update moves each plugin
+# to the newest commit its spec allows (branch, tag or semver) and rewrites the lockfile, which
+# `:Lazy restore` is for. lazy computes that target itself, so the check runs inside Neovim.
+set -eu
+dir=${XDG_DATA_HOME:-$HOME/.local/share}/${NVIM_APPNAME:-nvim}/lazy/lazy.nvim
+
+case "${1:-}" in
+  describe)
+    echo '{"protocol":1,"id":"lazy","name":"lazy.nvim","os":["macos","linux"],"capabilities":[]}'
+    ;;
+  detect)
+    if command -v nvim >/dev/null 2>&1 && [ -e "$dir/.git" ]; then
+      printf '{"installed":true,"version":"%s"}\n' "$(git -C "$dir" describe --tags --match 'v[0-9]*' --always)"
+    else
+      echo '{"installed":false}'
+    fi
+    ;;
+  outdated)
+    tmp=$(mktemp -d)
+    trap 'rm -rf "$tmp"' EXIT
+    # Headless Neovim prints messages, not our output, so the JSON goes through a file.
+    cat >"$tmp/list.lua" <<'EOF'
+local rows = {}
+for name, p in pairs(require("lazy.core.config").plugins) do
+  local u = p._.updates
+  if u and not p.pin then
+    local function v(info) return info.version and tostring(info.version) or (info.commit or ""):sub(1, 7) end
+    -- Detailed info adds the tag, so a plugin on a release shows its version, not a commit.
+    local from = require("lazy.manage.git").info(p.dir, true) or u.from
+    rows[#rows + 1] = { name = name, current = v(from), latest = v(u.to) }
+  end
+end
+vim.fn.writefile({ #rows > 0 and vim.json.encode(rows) or "[]" }, vim.env.REPOKE_LAZY_OUT)
+EOF
+    REPOKE_LAZY_OUT=$tmp/out.json nvim --headless "+Lazy! check" "+luafile $tmp/list.lua" +qa >&2
+    cat "$tmp/out.json"
+    ;;
+  upgrade)
+    shift
+    # `:Lazy!` waits for the tasks; nvim still exits 0 when one failed, hence the cquit.
+    nvim --headless "+Lazy! update $*" \
+      '+lua if require("lazy.manage.checker").has_errors() then vim.cmd.cquit(1) end' +qa
+    ;;
+  *)
+    echo "usage: $0 describe|detect|outdated|upgrade" >&2
+    exit 2
+    ;;
+esac
