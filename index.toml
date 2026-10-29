@@ -38,6 +38,9 @@ file = "plugins/git/repoke-git"
 os = ["macos", "linux"]
 requires = ["git"]
 description = "Carries .gitconfig and ~/.config/git in repoke export, to restore with init (repoke 0.7 or later)"
+sha256 = "ecaa903c0cfde19aac66e77377d6e427d5824380025800b1dde7858b0ce9c09f"
+url = "https://github.com/paveldelpozo/repoke-plugins/releases/download/files/repoke-git-ecaa903c0cfd"
+discussion = "https://github.com/paveldelpozo/repoke-plugins/discussions/3"
 
 [[plugin]]
 id = "zsh"
@@ -47,6 +50,9 @@ file = "plugins/zsh/repoke-zsh"
 os = ["macos", "linux"]
 requires = ["zsh"]
 description = "Carries .zshrc and the other zsh startup files in repoke export, to restore with init (repoke 0.7 or later)"
+sha256 = "3a56c867bd21d458a2a9ad049d112e269fcbaad23fa3ecaa11a1536095a306da"
+url = "https://github.com/paveldelpozo/repoke-plugins/releases/download/files/repoke-zsh-3a56c867bd21"
+discussion = "https://github.com/paveldelpozo/repoke-plugins/discussions/4"
 
 [[plugin]]
 id = "zinit"
@@ -56,6 +62,9 @@ file = "plugins/zinit/repoke-zinit"
 os = ["macos", "linux"]
 requires = ["git", "zsh"]
 description = "Updates zinit and the zsh plugins it cloned when their branch is behind the remote"
+sha256 = "64177309f3b97ded3f04d2510e1c578e5e41bc739079258749b58896f68e20aa"
+url = "https://github.com/paveldelpozo/repoke-plugins/releases/download/files/repoke-zinit-64177309f3b9"
+discussion = "https://github.com/paveldelpozo/repoke-plugins/discussions/5"
 
 [[plugin]]
 id = "antidote"
@@ -65,6 +74,9 @@ file = "plugins/antidote/repoke-antidote"
 os = ["macos", "linux"]
 requires = ["git", "zsh"]
 description = "Bundles with new commits, as antidote update --dry-run reports them, and antidote itself when it is a git clone"
+sha256 = "a8cdf0a9fbfec3164d3def02065b8975bc46d4ae2d4837b0f64a35dd398e67f3"
+url = "https://github.com/paveldelpozo/repoke-plugins/releases/download/files/repoke-antidote-a8cdf0a9fbfe"
+discussion = "https://github.com/paveldelpozo/repoke-plugins/discussions/6"
 
 [[plugin]]
 id = "tpm"
@@ -74,6 +86,9 @@ file = "plugins/tpm/repoke-tpm"
 os = ["macos", "linux"]
 requires = ["git", "tmux"]
 description = "Updates tpm and the tmux plugins it cloned when their branch is behind the remote"
+sha256 = "3c020e13f6dcbdaa912d447b432329ec91755af5813e66df12e33d170cdaae52"
+url = "https://github.com/paveldelpozo/repoke-plugins/releases/download/files/repoke-tpm-3c020e13f6dc"
+discussion = "https://github.com/paveldelpozo/repoke-plugins/discussions/7"
 
 [[plugin]]
 id = "lazy"
@@ -83,6 +98,9 @@ file = "plugins/lazy/repoke-lazy"
 os = ["macos", "linux"]
 requires = ["nvim", "git"]
 description = "Neovim plugins managed by lazy.nvim that :Lazy update would move to a newer commit or release"
+sha256 = "912f462444500839059a523eb313119dfe059509c0d65e5a572c346fc1c9382f"
+url = "https://github.com/paveldelpozo/repoke-plugins/releases/download/files/repoke-lazy-912f46244450"
+discussion = "https://github.com/paveldelpozo/repoke-plugins/discussions/8"
 
 [[plugin]]
 id = "vimplug"
@@ -92,6 +110,9 @@ file = "plugins/vimplug/repoke-vimplug"
 os = ["macos", "linux"]
 requires = ["git"]
 description = "Vim or Neovim plugins in your Plug list whose branch is behind the remote or whose wildcard tag has a newer match"
+sha256 = "6e0f4b02fb66658cacdf96d56258675a8d357371e2237c2390f052f4a75521e1"
+url = "https://github.com/paveldelpozo/repoke-plugins/releases/download/files/repoke-vimplug-6e0f4b02fb66"
+discussion = "https://github.com/paveldelpozo/repoke-plugins/discussions/9"
 
 [[plugin]]
 id = "gcloud"
@@ -101,3 +122,6 @@ file = "plugins/gcloud/repoke-gcloud"
 os = ["macos", "linux"]
 requires = ["gcloud"]
 description = "Google Cloud SDK components with an update available; also export and init"
+sha256 = "405d184ee3727118280429840a86461054582b9c5656ce3b688e44a6e59ce781"
+url = "https://github.com/paveldelpozo/repoke-plugins/releases/download/files/repoke-gcloud-405d184ee372"
+discussion = "https://github.com/paveldelpozo/repoke-plugins/discussions/10"
